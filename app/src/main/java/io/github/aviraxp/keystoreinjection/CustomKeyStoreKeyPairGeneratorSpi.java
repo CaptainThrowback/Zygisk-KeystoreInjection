@@ -28,6 +28,7 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.util.encoders.Base64;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -179,13 +180,13 @@ public class CustomKeyStoreKeyPairGeneratorSpi extends KeyPairGeneratorSpi {
             }
 
             // To be loaded
-            var AosVersion = new ASN1Integer(130000);
-            var AosPatchLevel = new ASN1Integer(202401);
+            var AosVersion = new ASN1Integer(140000);
+            var AosPatchLevel = new ASN1Integer(202406);
 
             // TODO hex3l: add applicationID to attestation
-            // var AapplicationID = createApplicationId();
-            var AbootPatchlevel = new ASN1Integer(20231101);
-            var AvendorPatchLevel = new ASN1Integer(20231101);
+            var AapplicationID = createApplicationId();
+            var AbootPatchlevel = new ASN1Integer(20240601);
+            var AvendorPatchLevel = new ASN1Integer(20240601);
 
             var AcreationDateTime = new ASN1Integer(System.currentTimeMillis());
             var Aorigin = new ASN1Integer(0);
@@ -202,12 +203,12 @@ public class CustomKeyStoreKeyPairGeneratorSpi extends KeyPairGeneratorSpi {
             var osVersion = new DERTaggedObject(true, 705, AosVersion);
             var osPatchLevel = new DERTaggedObject(true, 706, AosPatchLevel);
             // TODO hex3l: add applicationID to attestation
-            // var applicationID = new DERTaggedObject(true, 709, AapplicationID);
+            var applicationID = new DERTaggedObject(true, 709, AapplicationID);
             var vendorPatchLevel = new DERTaggedObject(true, 718, AvendorPatchLevel);
             var bootPatchLevel = new DERTaggedObject(true, 719, AbootPatchlevel);
 
             ASN1Encodable[] teeEnforcedEncodables = {purpose, algorithm, keySize, digest, ecCurve,
-                    noAuthRequired, creationDateTime, origin, rootOfTrust, osVersion, osPatchLevel, vendorPatchLevel, bootPatchLevel};
+                    noAuthRequired, creationDateTime, origin, rootOfTrust, osVersion, osPatchLevel, applicationID, vendorPatchLevel, bootPatchLevel};
 
             ASN1OctetString keyDescriptionOctetStr = getAsn1OctetString(teeEnforcedEncodables);
 
@@ -220,9 +221,9 @@ public class CustomKeyStoreKeyPairGeneratorSpi extends KeyPairGeneratorSpi {
     }
 
     private ASN1OctetString getAsn1OctetString(ASN1Encodable[] teeEnforcedEncodables) throws IOException {
-        ASN1Integer attestationVersion = new ASN1Integer(4);
+        ASN1Integer attestationVersion = new ASN1Integer(100);
         ASN1Enumerated attestationSecurityLevel = new ASN1Enumerated(1);
-        ASN1Integer keymasterVersion = new ASN1Integer(41);
+        ASN1Integer keymasterVersion = new ASN1Integer(100);
         ASN1Enumerated keymasterSecurityLevel = new ASN1Enumerated(1);
         ASN1OctetString attestationChallenge = new DEROctetString(params.getAttestationChallenge());
         ASN1OctetString uniqueId = new DEROctetString("".getBytes());
@@ -331,21 +332,31 @@ public class CustomKeyStoreKeyPairGeneratorSpi extends KeyPairGeneratorSpi {
         return kpg.generateKeyPair();
     }
 
-    ASN1Sequence createApplicationId(String packageName, int version, byte[] signatureDigests) {
+    private DEROctetString createApplicationId() throws IOException {
+        ASN1Encodable[] packageInfoAsn1Array1 = new ASN1Encodable[2];
+        packageInfoAsn1Array1[ATTESTATION_PACKAGE_INFO_PACKAGE_NAME_INDEX] =
+                new DEROctetString("com.google.android.gms".getBytes(StandardCharsets.UTF_8));
+        packageInfoAsn1Array1[ATTESTATION_PACKAGE_INFO_VERSION_INDEX] = new ASN1Integer(242632038);
+
+        ASN1Encodable[] packageInfoAsn1Array2 = new ASN1Encodable[2];
+        packageInfoAsn1Array2[ATTESTATION_PACKAGE_INFO_PACKAGE_NAME_INDEX] =
+                new DEROctetString("com.google.android.gsf".getBytes(StandardCharsets.UTF_8));
+        packageInfoAsn1Array2[ATTESTATION_PACKAGE_INFO_VERSION_INDEX] = new ASN1Integer(34);
+
         ASN1Encodable[] packageInfoAsn1Array = new ASN1Encodable[2];
-        packageInfoAsn1Array[ATTESTATION_PACKAGE_INFO_PACKAGE_NAME_INDEX] =
-                new DEROctetString(packageName.getBytes(StandardCharsets.UTF_8));
-        packageInfoAsn1Array[ATTESTATION_PACKAGE_INFO_VERSION_INDEX] = new ASN1Integer(version);
+        packageInfoAsn1Array[0] = new DERSequence(packageInfoAsn1Array1);
+        packageInfoAsn1Array[1] = new DERSequence(packageInfoAsn1Array2);
 
         ASN1Encodable[] applicationIdAsn1Array = new ASN1Encodable[2];
         applicationIdAsn1Array[ATTESTATION_APPLICATION_ID_PACKAGE_INFOS_INDEX] =
                 new DERSet(packageInfoAsn1Array);
 
         applicationIdAsn1Array[ATTESTATION_APPLICATION_ID_SIGNATURE_DIGESTS_INDEX] =
-                new DERSet(new DEROctetString(signatureDigests));
-
-        return new DERSequence(applicationIdAsn1Array);
+                new DERSet(new DEROctetString(new byte[] {-16, -3, 108, 91, 65, 15, 37, -53, 37, -61, -75, 51, 70, -56, -105, 47, -82, 48, -8, -18, 116, 17, -33, -111, 4, -128, -83, 107, 45, 96, -37, -125}));
+        return new DEROctetString(new DERSequence(applicationIdAsn1Array).getEncoded());
     }
+
+
 
     @SuppressLint("PrivateApi")
     public String getSystemProperty(String key) {
