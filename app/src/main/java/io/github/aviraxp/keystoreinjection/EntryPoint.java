@@ -1,4 +1,4 @@
-package es.chiteroman.playintegrityfix;
+package io.github.aviraxp.keystoreinjection;
 
 import android.os.Build;
 import android.util.Log;
@@ -148,6 +148,6 @@ public final class EntryPoint {
     }
 
     static void LOG(String msg) {
-        Log.d("PIF", msg);
+        Log.d("KeystoreInjection", msg);
     }
 }

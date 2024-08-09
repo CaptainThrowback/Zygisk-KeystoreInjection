@@ -7,11 +7,11 @@
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "PIF", __VA_ARGS__)
 
-#define CLASSES_DEX "/data/adb/modules/playintegrityfix/classes.dex"
+#define CLASSES_DEX "/data/adb/modules/keystoreinjection/classes.dex"
 
 #define PIF_JSON "/data/adb/pif.json"
 
-#define PIF_JSON_DEFAULT "/data/adb/modules/playintegrityfix/pif.json"
+#define PIF_JSON_DEFAULT "/data/adb/modules/keystoreinjection/pif.json"
 
 #define KEYBOX_FILE_PATH "/data/adb/keybox.xml"
 
@@ -92,7 +92,7 @@ static void doHook() {
     LOGD("Found and hooked __system_property_read_callback at %p", handle);
 }
 
-class PlayIntegrityFix : public zygisk::ModuleBase {
+class KeystoreInjection : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
@@ -227,7 +227,7 @@ private:
         LOGD("load class");
         auto loadClass = env->GetMethodID(clClass, "loadClass",
                                           "(Ljava/lang/String;)Ljava/lang/Class;");
-        auto entryClassName = env->NewStringUTF("es.chiteroman.playintegrityfix.EntryPoint");
+        auto entryClassName = env->NewStringUTF("io.github.aviraxp.keystoreinjection.EntryPoint");
         auto entryClassObj = env->CallObjectMethod(dexCl, loadClass, entryClassName);
 
         auto entryPointClass = (jclass) entryClassObj;
@@ -290,6 +290,6 @@ static void companion(int fd) {
     xwrite(fd, xmlVector.data(), xmlSize);
 }
 
-REGISTER_ZYGISK_MODULE(PlayIntegrityFix)
+REGISTER_ZYGISK_MODULE(KeystoreInjection)
 
 REGISTER_ZYGISK_COMPANION(companion)
