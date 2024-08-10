@@ -127,6 +127,11 @@ public:
         env->ReleaseStringUTFChars(args->app_data_dir, rawDir);
         env->ReleaseStringUTFChars(args->nice_name, rawName);
 
+        if (!dir.ends_with("/io.github.vvb2060.keyattestation")) {
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
+
         if (!dir.ends_with("/com.google.android.gms")) {
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
